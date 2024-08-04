@@ -9,10 +9,10 @@ int ect = 0;
 int tps = 0;
 int o2;
 float voltage = 0;
-int shortTermFuelTrim = 0;
-int longTermFuelTrim = 0;
-float intakeManifoldPressure = 0;
-byte timingAdvance = 0;
+int stf = 0;
+int ltf = 0;
+float imp = 0;
+byte ta = 0;
 
 byte dlcdata[20] = { 0 };  // dlc data buffer
 byte dlcTimeout = 0, dlcChecksumError = 0;
@@ -91,13 +91,13 @@ void setup() {
 }
 
 void loop() {
-  if (readEcuData()) {
-  }
-  delay(200);
+  if (readEcuData()) {}
 }
 
 bool readEcuData() {
   bool success = false;
+
+  Serial.print("Data,");
 
   //Engine RPM (rpm)
   if (dlcCommand(0x20, 0x05, 0x00, 0x10)) {  // read RPM
@@ -105,13 +105,11 @@ bool readEcuData() {
       dlcdata[2] = 0;
       dlcdata[3] = 0;
     }
-
     rpm = ((dlcdata[2] * 256) + dlcdata[3]) / 4;
-
-    if (rpm < 0) {
-      rpm = 0;
-    }
-    //Serial.println(rpm);
+    rpm = max(rpm, 0);  // Ensure RPM is non-negative
+    Serial.print("RPM: ");
+    Serial.print(rpm);
+    Serial.print(",");
     success = true;
   }
 
@@ -120,7 +118,9 @@ bool readEcuData() {
     float f = dlcdata[2];
     f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
     ect = round(f) + 40;
-    //Serial.print(ect);
+    Serial.print("ECT: ");
+    Serial.print(ect);
+    Serial.print(",");
     success = true;
   }
 
@@ -129,34 +129,46 @@ bool readEcuData() {
     float f = dlcdata[2];
     f = f / 10.45;
     voltage = f;
-    //Serial.print(voltage);
+    Serial.print("Voltage: ");
+    Serial.print(voltage);
+    Serial.print(",");
     success = true;
   }
 
   //Short Term Fuel (%)
   if (dlcCommand(0x20, 0x05, 0x20, 0x01)) {
-    shortTermFuelTrim = dlcdata[2];
-    //Serial.print(shortTermFuelTrim);
+    stf = dlcdata[2];
+    Serial.print("STF: ");
+    Serial.print(stf);
+    Serial.print(",");
     success = true;
   }
 
   //Long Term Fuel (%)
   if (dlcCommand(0x20, 0x05, 0x22, 0x01)) {
-    longTermFuelTrim = dlcdata[2];
-    //Serial.print(longTermFuelTrim);
+    ltf = dlcdata[2];
+    Serial.print("LTF: ");
+    Serial.print(ltf);
+    Serial.print(",");
     success = true;
   }
 
   //Intake Manifold Absolute Pressure (kPa)
   if (dlcCommand(0x20, 0x05, 0x12, 0x01)) {
-    intakeManifoldPressure = dlcdata[2] * 0.716 - 5;
-    //Serial.print(intakeManifoldPressure);
+    imp = dlcdata[2] * 0.716 - 5;
+    Serial.print("IMP: ");
+    Serial.print(imp);
+    Serial.print(",");
+    success = true;
   }
 
   //Vehicle Speed (Km/h)
   if (dlcCommand(0x20, 0x05, 0x02, 0x01)) {
     speed = dlcdata[2];
-    //Serial.print(speed);
+    Serial.print("Speed: ");
+    Serial.print(speed);
+    Serial.print(",");
+    success = true;
   }
 
   //Intake Air Temperature (º)
@@ -164,28 +176,42 @@ bool readEcuData() {
     float f = dlcdata[2];
     f = 155.04149 - f * 3.0414878 + pow(f, 2) * 0.03952185 - pow(f, 3) * 0.00029383913 + pow(f, 4) * 0.0000010792568 - pow(f, 5) * 0.0000000015618437;
     iat = round(f) + 40;
-    //Serial.print(iat);
+    Serial.print("IAT: ");
+    Serial.print(iat);
+    Serial.print(",");
+    success = true;
   }
 
-  // Timing advance (º)
+  //Timing advance (º)
   if (dlcCommand(0x20, 0x05, 0x26, 0x01)) {
-    timingAdvance = ((dlcdata[2] - 24) / 2) + 128;
-    //Serial.print(timingAdvance);
+    ta = ((dlcdata[2] - 24) / 2) + 128;
+    Serial.print("TA: ");
+    Serial.print(ta);
+    Serial.print(",");
+    success = true;
   }
 
-  // Throttle Position Sensor (%)
+  //Throttle Position Sensor (%)
   if (dlcCommand(0x20, 0x05, 0x14, 0x01)) {
     //0% = 25 & 100% = 233
     tps = round((dlcdata[2] - 25) / 2.08);
-    //Serial.print(tps);
+    tps = max(tps, 0);  // Ensure TPS is non-negative
+    Serial.print("TPS: ");
+    Serial.print(tps);
+    Serial.print(",");
+    success = true;
   }
 
-  // Oxygen Sensor O2 (V)
+  //Oxygen Sensor O2 (V)
   if (dlcCommand(0x20, 0x05, 0x15, 0x01)) {
     o2 = dlcdata[2];
-    //Serial.print(o2);
+    Serial.print("O2: ");
+    Serial.print(o2);
+    Serial.print(",");
+    success = true;
   }
 
+  Serial.println();  // End the line for each data set
 
   return success;
 }

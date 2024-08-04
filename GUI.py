@@ -1,58 +1,64 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QPushButton
-from PyQt5.QtCore import QTimer
+import tkinter as tk
+from tkinter import ttk
 import serial
+import threading
 
-class MainWindow(QMainWindow):
+class SerialReader(threading.Thread):
+    def __init__(self, port, baudrate, callback):
+        super().__init__()
+        self.port = port
+        self.baudrate = baudrate
+        self.callback = callback
+        self.running = True
+        self.serial = serial.Serial(port, baudrate, timeout=1)
+
+    def run(self):
+        while self.running:
+            if self.serial.in_waiting > 0:
+                line = self.serial.readline().decode('utf-8').strip()
+                self.callback(line)
+
+    def stop(self):
+        self.running = False
+        self.serial.close()
+
+class GUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Interfaz del Coche")
-        self.setGeometry(100, 100, 600, 400)
+        self.title("ECU Data Monitor")
+        self.geometry("400x300")
 
-        # Configura el puerto serial
-        self.ser = serial.Serial('COM3', 9600, timeout=1)
+        self.data_labels = {}
+        self.create_widgets()
+        self.serial_reader = SerialReader('COM5', 115200, self.update_data)
+        self.serial_reader.start()
 
-        # Configura la interfaz
-        layout = QVBoxLayout()
+    def create_widgets(self):
+        self.frame = ttk.Frame(self)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+
+        self.data_display = ttk.Label(self.frame, text="Waiting for data...", font=("Arial", 12))
+        self.data_display.pack(pady=20)
+
+        self.quit_button = ttk.Button(self.frame, text="Quit", command=self.quit)
+        self.quit_button.pack(pady=10)
+
+    def update_data(self, data):
+        lines = data.split(',')
+        formatted_data = ""
+
+        for line in lines:
+            key_value = line.split(':')
+            if len(key_value) == 2:
+                key, value = key_value
+                formatted_data += f"{key}: {value}\n"
         
-        self.label_revolutions = QLabel("Revoluciones: 0")
-        self.label_speed = QLabel("Velocidad: 0")
-        self.label_temp = QLabel("Temperatura: 0")
-        self.label_fuel = QLabel("Consumo: 0")
+        self.data_display.config(text=formatted_data)
 
-        layout.addWidget(self.label_revolutions)
-        layout.addWidget(self.label_speed)
-        layout.addWidget(self.label_temp)
-        layout.addWidget(self.label_fuel)
+    def quit(self):
+        self.serial_reader.stop()
+        self.destroy()
 
-        # Agrega un botón para actualizar manualmente
-        self.button_update = QPushButton("Actualizar")
-        self.button_update.clicked.connect(self.update_data)
-        layout.addWidget(self.button_update)
-
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
-
-        # Configura un temporizador para actualización periódica
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_data)
-        self.timer.start(1000)  # Actualiza cada segundo
-
-    def update_data(self):
-        if self.ser.in_waiting > 0:
-            try:
-                data = self.ser.readline().decode('utf-8').strip()
-                # Suponiendo que los datos llegan en un formato delimitado
-                revs, speed, temp, fuel = data.split(',')
-                self.label_revolutions.setText(f"Revoluciones: {revs}")
-                self.label_speed.setText(f"Velocidad: {speed}")
-                self.label_temp.setText(f"Temperatura: {temp}")
-                self.label_fuel.setText(f"Consumo: {fuel}")
-            except ValueError:
-                print("Error en el formato de los datos")
-
-if __name__ == '__main__':
-    app = QApplication([])
-    window = MainWindow()
-    window.show()
-    app.exec_()
+if __name__ == "__main__":
+    app = GUI()
+    app.mainloop()
