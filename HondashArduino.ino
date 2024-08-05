@@ -7,18 +7,15 @@ int speed = 0;
 int iat = 0;
 int ect = 0;
 int tps = 0;
-int o2;
-float voltage = 0;
+int o2 = 0;
 int stf = 0;
 int ltf = 0;
-float imp = 0;
-byte ta = 0;
+int ta = 0;
+float voltage = 0.0;
+float imap = 0.0;
 
 byte dlcdata[20] = { 0 };  // dlc data buffer
 byte dlcTimeout = 0, dlcChecksumError = 0;
-bool dlcWait = false;
-
-int dtcErrors[14], dtcCount = 0;
 
 void dlcInit() {
   dlcSerial.write(0x68);
@@ -85,7 +82,6 @@ int dlcCommand(byte cmd, byte num, byte loc, byte len) {
 void setup() {
   Serial.begin(115200);
   dlcSerial.begin(9600);
-  Serial.println("Starting...");
   dlcInit();
   delay(1000);
 }
@@ -99,8 +95,8 @@ bool readEcuData() {
 
   Serial.print("Data,");
 
-  //Engine RPM (rpm)
-  if (dlcCommand(0x20, 0x05, 0x00, 0x10)) {  // read RPM
+  //Engine RPM
+  if (dlcCommand(0x20, 0x05, 0x00, 0x10)) {
     if ((dlcdata[2] == 255) && (dlcdata[3] == 255)) {
       dlcdata[2] = 0;
       dlcdata[3] = 0;
@@ -155,9 +151,9 @@ bool readEcuData() {
 
   //Intake Manifold Absolute Pressure (kPa)
   if (dlcCommand(0x20, 0x05, 0x12, 0x01)) {
-    imp = dlcdata[2] * 0.716 - 5;
-    Serial.print("IMP: ");
-    Serial.print(imp);
+    imap = dlcdata[2] * 0.716 - 5;
+    Serial.print("imap: ");
+    Serial.print(imap);
     Serial.print(",");
     success = true;
   }
