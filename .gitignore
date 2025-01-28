@@ -1,0 +1,52 @@
+# ---- Arduino ----
+# Build artifacts and temp files
+*.bin
+*.elf
+*.hex
+*.eep
+*.list
+*.d
+*.o
+*.gch
+*.orig
+*.rej
+*.ino~
+*.cpp~
+*.h~
+
+# Build output directories (if any)
+build/
+build-*/
+
+# Arduino IDE workspace files
+.vscode/
+.arduino15/
+libraries/*/__*
+libraries/*/examples/*/__*
+
+# ---- Python ----
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Miscellaneous
+*.egg-info/
+*.egg
+dist/
+build/
+pip-wheel-metadata/
+*.log
+*.sqlite3
+
+# IDE / Editor directories and files
+.idea/
+*.swp
+*.swo
+*~
